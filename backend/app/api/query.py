@@ -1,9 +1,9 @@
-"""数据查询 API: 条件检索 / 聚合统计 / 导出."""
+"""数据查询 API: 条件检索 / 聚合统计 / 统计分组 / 导出."""
 from flask import Blueprint, current_app, request
 
 from ..domain.constants import DATA_SOURCE_LABELS, PERIOD_LABELS, STATION_TYPE_LABELS
 from ..domain.standards import POLLUTANTS
-from ..services import query_service
+from ..services import grouping_service, query_service
 from ..utils.pagination import paginate_query
 
 bp = Blueprint("query", __name__)
@@ -21,6 +21,12 @@ def query_measurements():
 @bp.get("/statistics")
 def query_statistics():
     return query_service.statistics(request.args)
+
+
+@bp.get("/grouping")
+def query_grouping():
+    """统计分组逐层展开: 片区 -> 点位 -> 因子 -> 时间段 -> 单条记录."""
+    return grouping_service.grouping(request.args)
 
 
 @bp.get("/export")

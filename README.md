@@ -13,10 +13,12 @@
 | 监测数据录入 | `/measurements` | 按“监测点 + 时刻 + 周期”成组录入多因子浓度、超标校验预览、重复数据覆盖、录入结果回执 |
 | 超标记录标注 | `/exceedances` | 超标自动建单、单条/批量标注(确认 / 忽略 / 重置)、等级人工修正、标注留痕与统计 |
 | 数据查询 | `/query` | 多条件组合检索、聚合统计(按因子/站点/区域/日/月等)、分页浏览、CSV 导出 |
+| 统计分组 | `/grouping` | 片区→点位→因子→时间段→记录逐层展开、空分组显式标出、逐层计数核对、按需加载、任意层直达原始记录 |
 
 设计要点:
 
 - **超标自动判定**: 数据写入时即按“因子 + 数据周期”取用限值, 计算超标倍数并分级, 同步生成待标注超标记录; 修正数据后超标记录自动更新或撤销。
+- **统计分组逐层一致**: 分组树每一层的计数由服务端按同一组筛选条件聚合, 子层合计与父级计数严格相等; 有台账/有因子定义但当前筛选下无数据的分组以“空分组”显式返回, 不跳过; 每层独立分页且计数基于整层计算, 翻页时保持稳定。
 - **业务规则集中在后端**: 限值与分级规则位于 `backend/app/domain/`, 前端仅做展示与前置校验, 避免规则分叉。
 - **模块化组织**: 后端按 `api / services / models / domain / utils` 分层; 前端每个业务模块独占目录, 公共能力沉淀在 `components/`、`hooks/`、`api/`。
 
@@ -28,7 +30,7 @@
 | 数据库 | SQLite(默认, 零依赖) / PostgreSQL 16(可选, compose 覆盖文件) |
 | 前端 | React 18 · React Router 6 · Vite 7 · Axios · 原生 CSS(设计令牌 + 组件类) |
 | 部署 | Docker 多阶段构建 · Nginx 静态托管与 `/api` 反向代理 · docker compose |
-| 测试 | Pytest(43 个后端用例: 接口 + 领域规则) |
+| 测试 | Pytest(50 个后端用例: 接口 + 领域规则) |
 
 ## 目录结构
 
@@ -44,7 +46,7 @@
 │   │   ├── seed.py              # 演示数据生成与启动引导
 │   │   ├── domain/              # 业务规则: 因子限值、枚举、超标分级
 │   │   ├── models/              # Station / Measurement / Exceedance
-│   │   ├── services/            # 台账、录入、标注、查询统计业务逻辑
+│   │   ├── services/            # 台账、录入、标注、查询统计、统计分组业务逻辑
 │   │   ├── api/                 # 蓝图: meta / stations / measurements / exceedances / query
 │   │   └── utils/               # 校验器、分页、CSV 导出
 │   ├── tests/                   # Pytest 用例
@@ -56,7 +58,7 @@
 │   │   ├── components/          # layout(侧边栏/顶栏) 与 common(表格/分页/弹窗/表单等)
 │   │   ├── constants/           # 路由、标签与色板映射
 │   │   ├── hooks/               # useListQuery / useAsyncData / useOptions
-│   │   ├── pages/               # overview / stations / measurements / exceedances / query
+│   │   ├── pages/               # overview / stations / measurements / exceedances / query / grouping
 │   │   ├── styles/global.css    # 设计令牌与公共样式
 │   │   └── utils/               # 时间/数值格式化、下载
 │   ├── Dockerfile · nginx.conf · vite.config.js
@@ -156,6 +158,7 @@ docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --buil
 | GET | `/api/stations/options` | 下拉选项(监测点、区域) |
 | GET | `/api/stations/summary` | 台账规模统计 |
 | GET | `/api/measurements` | 监测数据分页查询(含筛选汇总) |
+| GET | `/api/measurements/{id}` | 单条记录详情(录入内容 + 限值快照 + 判定与标注结果) |
 | POST | `/api/measurements/entries` | **成组录入**: 一个监测点 + 一个时刻 + 多个因子 |
 | POST | `/api/measurements/preview` | 超标校验预览(不写库) |
 | DELETE | `/api/measurements/{id}` | 删除监测数据 |
@@ -167,6 +170,7 @@ docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --buil
 | GET | `/api/exceedances/summary` | 超标统计(状态/等级/高发因子/站点排名) |
 | GET | `/api/query/measurements` | 高级条件检索 |
 | GET | `/api/query/statistics` | 聚合统计(`group_by` + `metric`) |
+| GET | `/api/query/grouping` | 统计分组逐层展开(`level=area/station/pollutant/bucket/record` + `group_*` 路径 + `granularity`) |
 | GET | `/api/query/export` | 查询结果导出 CSV |
 
 `POST /api/measurements/entries` 请求示例:
@@ -228,7 +232,7 @@ docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --buil
 
 ```bash
 cd backend
-python -m pytest -q          # 43 个用例: 台账 CRUD/级联、录入与超标判定、标注规则、查询统计与导出、元数据接口
+python -m pytest -q          # 50 个用例: 台账 CRUD/级联、录入与超标判定、标注规则、查询统计与导出、统计分组逐层展开、元数据接口
 
 cd frontend
 npm run build                # 生产构建校验

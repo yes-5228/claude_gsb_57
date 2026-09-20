@@ -21,7 +21,7 @@ export default function Modal({
 
   if (!open) return null
 
-  const panelClass = drawer ? 'drawer' : `modal ${width === 'wide' ? 'wide' : ''}`
+  const panelClass = drawer ? `drawer ${width === 'wide' ? 'wide' : ''}` : `modal ${width === 'wide' ? 'wide' : ''}`
 
   return (
     <div

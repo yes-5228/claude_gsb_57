@@ -289,3 +289,23 @@ ul.plain li { margin-bottom: 5px; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .span-2 { grid-column: span 1; }
 }
+
+/* ---------- grouping drill-down ---------- */
+.group-level { display: flex; flex-direction: column; gap: 10px; }
+.group-consistency { font-size: 12.5px; padding: 8px 12px; border-radius: 8px; }
+.group-consistency.is-ok { background: var(--success-soft); color: var(--success); }
+.group-consistency.is-bad { background: var(--danger-soft); color: var(--danger); }
+.group-labelcell { display: flex; align-items: center; gap: 8px; }
+.group-expander {
+  border: none; background: transparent; cursor: pointer; padding: 0; width: 18px;
+  color: var(--primary); font-size: 13px; line-height: 1;
+}
+.group-expander:hover { color: var(--text); }
+tr.group-row-empty td { color: var(--text-muted); }
+tr.group-row-empty .strong { font-weight: 400; }
+.group-child-row > td { background: var(--panel-soft); padding: 14px 18px; }
+.group-child { border-left: 3px solid var(--border-strong); padding-left: 16px; }
+.group-breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 12.5px; }
+.group-section-title { margin: 0 0 8px; font-size: 13.5px; }
+.group-records .pager { border-top: none; }
+.drawer.wide { max-width: 880px; }

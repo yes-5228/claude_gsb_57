@@ -92,7 +92,8 @@ def export_measurements():
 
 @bp.get("/<int:measurement_id>")
 def get_measurement(measurement_id):
-    return measurement_service.get_measurement(measurement_id).to_dict(include_station=True)
+    measurement = measurement_service.get_measurement(measurement_id)
+    return measurement.to_dict(include_station=True, include_exceedance=True)
 
 
 @bp.delete("/<int:measurement_id>")

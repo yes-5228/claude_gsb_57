@@ -1,6 +1,7 @@
 import http, { toParams } from './client.js'
 
 export const listMeasurements = (params) => http.get('/measurements', { params: toParams(params) })
+export const getMeasurement = (id) => http.get(`/measurements/${id}`)
 export const previewEntries = (payload) => http.post('/measurements/preview', payload)
 export const createEntries = (payload) => http.post('/measurements/entries', payload)
 export const deleteMeasurement = (id) => http.delete(`/measurements/${id}`)

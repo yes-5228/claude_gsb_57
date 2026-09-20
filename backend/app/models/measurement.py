@@ -43,7 +43,7 @@ class Measurement(TimestampMixin, db.Model):
         meta = get_pollutant(self.pollutant)
         return meta["label"] if meta else self.pollutant
 
-    def to_dict(self, include_station=False):
+    def to_dict(self, include_station=False, include_exceedance=False):
         payload = {
             "id": self.id,
             "station_id": self.station_id,
@@ -74,6 +74,8 @@ class Measurement(TimestampMixin, db.Model):
                 "area": self.station.area,
                 "station_type_label": self.station.to_dict()["station_type_label"],
             }
+        if include_exceedance and self.exceedance:
+            payload["exceedance"] = self.exceedance.to_dict()
         return payload
 
     def __repr__(self):
