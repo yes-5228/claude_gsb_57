@@ -1,9 +1,9 @@
-"""数据查询 API: 条件检索 / 聚合统计 / 导出."""
+"""数据查询 API: 条件检索 / 聚合统计 / 分层下钻 / 导出."""
 from flask import Blueprint, current_app, request
 
 from ..domain.constants import DATA_SOURCE_LABELS, PERIOD_LABELS, STATION_TYPE_LABELS
 from ..domain.standards import POLLUTANTS
-from ..services import query_service
+from ..services import drilldown_service, query_service
 from ..utils.pagination import paginate_query
 
 bp = Blueprint("query", __name__)
@@ -21,6 +21,16 @@ def query_measurements():
 @bp.get("/statistics")
 def query_statistics():
     return query_service.statistics(request.args)
+
+
+@bp.get("/drilldown/<level>")
+def query_drilldown(level):
+    """分层下钻: area → station → pollutant → bucket → record.
+
+    通过 area / station_id / pollutant_code / bucket 参数携带下钻路径,
+    其余参数复用查询筛选; bucket 与 record 层支持分页。
+    """
+    return drilldown_service.drilldown(request.args, level)
 
 
 @bp.get("/export")

@@ -13,10 +13,12 @@
 | 监测数据录入 | `/measurements` | 按“监测点 + 时刻 + 周期”成组录入多因子浓度、超标校验预览、重复数据覆盖、录入结果回执 |
 | 超标记录标注 | `/exceedances` | 超标自动建单、单条/批量标注(确认 / 忽略 / 重置)、等级人工修正、标注留痕与统计 |
 | 数据查询 | `/query` | 多条件组合检索、聚合统计(按因子/站点/区域/日/月等)、分页浏览、CSV 导出 |
+| 分层下钻 | `/drilldown` | 片区 → 点位 → 因子 → 时间段 → 单条记录逐层展开, 计数逐层对齐, 空分组显式标出, 任意层直达原始记录 |
 
 设计要点:
 
 - **超标自动判定**: 数据写入时即按“因子 + 数据周期”取用限值, 计算超标倍数并分级, 同步生成待标注超标记录; 修正数据后超标记录自动更新或撤销。
+- **分层下钻计数可核对**: 下钻各层 (`services/drilldown_service.py`) 的父级计数独立聚合, 与子层条数之和逐节点核对; 空分组按全集枚举并以 `is_empty` 显式返回; 时间桶/记录层按需加载并分页, 计数跨页稳定; 任意一层均可携带路径直达原始记录及其超标判定。
 - **业务规则集中在后端**: 限值与分级规则位于 `backend/app/domain/`, 前端仅做展示与前置校验, 避免规则分叉。
 - **模块化组织**: 后端按 `api / services / models / domain / utils` 分层; 前端每个业务模块独占目录, 公共能力沉淀在 `components/`、`hooks/`、`api/`。
 
@@ -28,7 +30,7 @@
 | 数据库 | SQLite(默认, 零依赖) / PostgreSQL 16(可选, compose 覆盖文件) |
 | 前端 | React 18 · React Router 6 · Vite 7 · Axios · 原生 CSS(设计令牌 + 组件类) |
 | 部署 | Docker 多阶段构建 · Nginx 静态托管与 `/api` 反向代理 · docker compose |
-| 测试 | Pytest(43 个后端用例: 接口 + 领域规则) |
+| 测试 | Pytest(55 个后端用例: 接口 + 领域规则 + 分层下钻) |
 
 ## 目录结构
 
@@ -44,7 +46,7 @@
 │   │   ├── seed.py              # 演示数据生成与启动引导
 │   │   ├── domain/              # 业务规则: 因子限值、枚举、超标分级
 │   │   ├── models/              # Station / Measurement / Exceedance
-│   │   ├── services/            # 台账、录入、标注、查询统计业务逻辑
+│   │   ├── services/            # 台账、录入、标注、查询统计与分层下钻业务逻辑
 │   │   ├── api/                 # 蓝图: meta / stations / measurements / exceedances / query
 │   │   └── utils/               # 校验器、分页、CSV 导出
 │   ├── tests/                   # Pytest 用例
@@ -56,7 +58,7 @@
 │   │   ├── components/          # layout(侧边栏/顶栏) 与 common(表格/分页/弹窗/表单等)
 │   │   ├── constants/           # 路由、标签与色板映射
 │   │   ├── hooks/               # useListQuery / useAsyncData / useOptions
-│   │   ├── pages/               # overview / stations / measurements / exceedances / query
+│   │   ├── pages/               # overview / stations / measurements / exceedances / query / drilldown
 │   │   ├── styles/global.css    # 设计令牌与公共样式
 │   │   └── utils/               # 时间/数值格式化、下载
 │   ├── Dockerfile · nginx.conf · vite.config.js
@@ -167,6 +169,7 @@ docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --buil
 | GET | `/api/exceedances/summary` | 超标统计(状态/等级/高发因子/站点排名) |
 | GET | `/api/query/measurements` | 高级条件检索 |
 | GET | `/api/query/statistics` | 聚合统计(`group_by` + `metric`) |
+| GET | `/api/query/drilldown/<level>` | 分层下钻(`area`/`station`/`pollutant`/`bucket`/`record`, 路径参数 + 筛选, 时间桶/记录分页) |
 | GET | `/api/query/export` | 查询结果导出 CSV |
 
 `POST /api/measurements/entries` 请求示例:
@@ -228,7 +231,7 @@ docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --buil
 
 ```bash
 cd backend
-python -m pytest -q          # 43 个用例: 台账 CRUD/级联、录入与超标判定、标注规则、查询统计与导出、元数据接口
+python -m pytest -q          # 55 个用例: 台账 CRUD/级联、录入与超标判定、标注规则、查询统计、分层下钻与导出、元数据接口
 
 cd frontend
 npm run build                # 生产构建校验

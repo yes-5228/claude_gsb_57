@@ -1,5 +1,11 @@
 """监测数据记录."""
-from ..domain.constants import DATA_SOURCE_LABELS, PERIOD_LABELS, label_of
+from ..domain.constants import (
+    DATA_SOURCE_LABELS,
+    EXCEEDANCE_LEVEL_LABELS,
+    EXCEEDANCE_STATUS_LABELS,
+    PERIOD_LABELS,
+    label_of,
+)
 from ..domain.standards import get_pollutant
 from ..extensions import db
 from .base import TimestampMixin, iso
@@ -43,7 +49,7 @@ class Measurement(TimestampMixin, db.Model):
         meta = get_pollutant(self.pollutant)
         return meta["label"] if meta else self.pollutant
 
-    def to_dict(self, include_station=False):
+    def to_dict(self, include_station=False, include_exceedance=False):
         payload = {
             "id": self.id,
             "station_id": self.station_id,
@@ -73,6 +79,19 @@ class Measurement(TimestampMixin, db.Model):
                 "name": self.station.name,
                 "area": self.station.area,
                 "station_type_label": self.station.to_dict()["station_type_label"],
+            }
+        if include_exceedance and self.exceedance:
+            payload["exceedance"] = {
+                "id": self.exceedance.id,
+                "level": self.exceedance.level,
+                "level_label": label_of(EXCEEDANCE_LEVEL_LABELS, self.exceedance.level),
+                "status": self.exceedance.status,
+                "status_label": label_of(EXCEEDANCE_STATUS_LABELS, self.exceedance.status),
+                "limit_value": self.exceedance.limit_value,
+                "exceed_ratio": self.exceedance.exceed_ratio,
+                "note": self.exceedance.note,
+                "annotator": self.exceedance.annotator,
+                "annotated_at": iso(self.exceedance.annotated_at),
             }
         return payload
 
